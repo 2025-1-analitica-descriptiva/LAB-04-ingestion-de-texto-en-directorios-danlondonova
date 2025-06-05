@@ -1,46 +1,61 @@
-# pylint: disable=import-outside-toplevel
-# pylint: disable=line-too-long
-# flake8: noqa
+
 """
 Escriba el codigo que ejecute la accion solicitada en cada pregunta.
 """
-import os
+
+
 import zipfile
 import pandas as pd
-
+import os
 
 def pregunta_01():
-    zip_path = "files/input.zip"
-    input_root = "files/input"
-    train_path = os.path.join(input_root, "train")
-    test_path = os.path.join(input_root, "test")
+    # Descomprimir ZIP solo si no existe ya la carpeta
+    if not os.path.exists("files/input/train"):
+        with zipfile.ZipFile("files/input.zip", "r") as zip_ref:
+            zip_ref.extractall("files")
 
-    # Verifica si la carpeta train existe; si no, descomprime el ZIP
-    if not os.path.exists(train_path) or not os.path.exists(test_path):
-        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall(input_root)
+    test = {"phrase": [], "target": []}
+    train = {"phrase": [], "target": []}
 
-    os.makedirs("files/output", exist_ok=True)
+    # Recorremos todos los archivos .txt
+    for root, _, filenames in os.walk("files/input"):
+        for file_name in filenames:
+            if file_name.endswith(".txt"):
+                full_path = os.path.join(root, file_name)
+                try:
+                    with open(full_path, "r", encoding="utf-8") as f:
+                        phrase = f.read().strip()
+                except:
+                    # En caso de fallo, omitir archivo
+                    continue
 
-    def procesar_directorio(input_dir, output_file):
-        data = []
-        for sentiment in ['positive', 'negative', 'neutral']:
-            sentiment_dir = os.path.join(input_dir, sentiment)
-            if not os.path.exists(sentiment_dir):
-                raise FileNotFoundError(f"Directorio no encontrado: {sentiment_dir}")
-            for filename in os.listdir(sentiment_dir):
-                file_path = os.path.join(sentiment_dir, filename)
-                with open(file_path, "r", encoding="utf-8") as f:
-                    text = f.read().strip()
-                    data.append({"phrase": text, "target": sentiment})
-        df = pd.DataFrame(data)
-        df.to_csv(output_file, index=False)
+                target = os.path.basename(os.path.dirname(full_path))  # carpeta: positive/negative/neutral
 
-    procesar_directorio(train_path, "files/output/train_dataset.csv")
-    procesar_directorio(test_path, "files/output/test_dataset.csv")
+                if "test" in full_path:
+                    test["phrase"].append(phrase)
+                    test["target"].append(target)
+                elif "train" in full_path:
+                    train["phrase"].append(phrase)
+                    train["target"].append(target)
+
+    # Convertir a DataFrame
+    test_df = pd.DataFrame(test)
+    train_df = pd.DataFrame(train)
+
+    # Crear carpeta de salida
+    output_dir = "files/output"
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Guardar CSVs
+    test_df.to_csv(os.path.join(output_dir, "test_dataset.csv"), index=False)
+    train_df.to_csv(os.path.join(output_dir, "train_dataset.csv"), index=False)
+
+# Permitir ejecución directa
+if __name__ == "__main__":
+    pregunta_01()
 
 
-"""
+    """
     La información requerida para este laboratio esta almacenada en el
     archivo "files/input.zip" ubicado en la carpeta raíz.
     Descomprima este archivo.
