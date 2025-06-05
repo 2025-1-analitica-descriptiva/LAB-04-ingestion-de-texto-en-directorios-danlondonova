@@ -4,55 +4,43 @@ Escriba el codigo que ejecute la accion solicitada en cada pregunta.
 """
 
 
+import os
+import shutil
 import zipfile
 import pandas as pd
-import os
 
 def pregunta_01():
-    # Descomprimir ZIP solo si no existe ya la carpeta
-    if not os.path.exists("files/input/train"):
-        with zipfile.ZipFile("files/input.zip", "r") as zip_ref:
-            zip_ref.extractall("files")
+    # Paso 1: Eliminar extracción anterior si existe (evita duplicados)
+    if os.path.exists("files/input"):
+        shutil.rmtree("files/input")
 
+    # Paso 2: Extraer ZIP limpio
+    with zipfile.ZipFile("files/input.zip", "r") as zip_ref:
+        zip_ref.extractall("files")
+
+    # Paso 3: Leer archivos .txt y construir datasets
     test = {"phrase": [], "target": []}
     train = {"phrase": [], "target": []}
 
-    # Recorremos todos los archivos .txt
-    for root, _, filenames in os.walk("files/input"):
-        for file_name in filenames:
+    for root, _, files_in_dir in os.walk("files/input"):
+        for file_name in files_in_dir:
             if file_name.endswith(".txt"):
-                full_path = os.path.join(root, file_name)
-                try:
-                    with open(full_path, "r", encoding="utf-8") as f:
-                        phrase = f.read().strip()
-                except:
-                    # En caso de fallo, omitir archivo
-                    continue
+                file_path = os.path.join(root, file_name)
+                with open(file_path, "r", encoding="utf-8") as f:
+                    phrase = f.read().strip()
+                target = os.path.basename(os.path.dirname(file_path))
 
-                target = os.path.basename(os.path.dirname(full_path))  # carpeta: positive/negative/neutral
-
-                if "test" in full_path:
+                if "test" in file_path:
                     test["phrase"].append(phrase)
                     test["target"].append(target)
-                elif "train" in full_path:
+                elif "train" in file_path:
                     train["phrase"].append(phrase)
                     train["target"].append(target)
 
-    # Convertir a DataFrame
-    test_df = pd.DataFrame(test)
-    train_df = pd.DataFrame(train)
-
-    # Crear carpeta de salida
-    output_dir = "files/output"
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Guardar CSVs
-    test_df.to_csv(os.path.join(output_dir, "test_dataset.csv"), index=False)
-    train_df.to_csv(os.path.join(output_dir, "train_dataset.csv"), index=False)
-
-# Permitir ejecución directa
-if __name__ == "__main__":
-    pregunta_01()
+    # Paso 4: Crear CSVs
+    os.makedirs("files/output", exist_ok=True)
+    pd.DataFrame(train).to_csv("files/output/train_dataset.csv", index=False)
+    pd.DataFrame(test).to_csv("files/output/test_dataset.csv", index=False)
 
 
     """
